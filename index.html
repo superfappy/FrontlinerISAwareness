@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Interactive Security Slide</title>
+  <!--
+    This project implements a small slide deck with multiple scenes.  Each
+    scene can be directly addressed via a query parameter (e.g. `?scene1`,
+    `?scene2`, `?scene3`).  Only the first scene contains interactive
+    content; the others are left as placeholders for future expansion.
+  -->
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div id="slide-container">
+    <!-- Scene 1 – Lock‑the‑screen challenge (completely rebuilt) -->
+    <div id="scene1" class="scene">
+      <!-- Decorative animated bubbles floating in the background -->
+      <div class="bg-bubbles">
+        <div class="bubble bubble-1"></div>
+        <div class="bubble bubble-2"></div>
+        <div class="bubble bubble-3"></div>
+        <div class="bubble bubble-4"></div>
+        <div class="bubble bubble-5"></div>
+        <div class="bubble bubble-6"></div>
+      </div>
+      <!-- Monitor wrapper houses a monitor with a screen and a stand.  The
+           interactive card is now positioned inside the monitor's screen to
+           better represent a desktop PC. -->
+      <div class="monitor-wrapper">
+        <!-- Wrap the monitor screen in a separate container so that the
+             shake animation can be applied without disturbing the
+             monitor wrapper's centring transform.  Only the screen
+             will wobble when an incorrect choice is made, leaving the
+             stand anchored in place. -->
+        <div class="monitor-shake-container">
+          <div class="monitor">
+          <!-- Decorative camera dot centred on top of the monitor screen -->
+          <div class="monitor-camera"></div>
+          <!-- Central interactive card with frosted glass effect -->
+          <div class="card">
+            <div class="card-header">
+              <!-- Kitopi icon in the top‑right corner -->
+              <img src="Kitopi-small-icon-01.svg" alt="Kitopi" class="kitopi-icon" />
+            </div>
+            <div class="card-body">
+              <!-- Dynamic message; text is typed letter by letter via JS -->
+              <span id="typed-text"></span>
+              <!-- Buttons for the user to choose from -->
+              <div class="card-buttons">
+                <!--
+                  Embed FontAwesome SVGs directly in the buttons for crisp,
+                  scalable icons.  A small span wraps the label so that
+                  spacing remains consistent across different screen sizes.
+                -->
+                <button id="lock-btn" class="btn lock">
+                  <svg class="btn-icon" viewBox="0 0 24 24" aria-hidden="true">
+                    <!--
+                      A simple padlock icon with a uniform bounding box.  The
+                      lock body and shackle are drawn with strokes only to
+                      avoid any clipping at the edges of the viewBox.  The
+                      dimensions mirror those of the X icon below so the
+                      pair align optically when rendered side by side.
+                    -->
+                    <rect x="6" y="10" width="12" height="10" rx="2" fill="none" stroke="currentColor" stroke-width="2" />
+                    <path d="M8 10V8a4 4 0 1 1 8 0v2" stroke="currentColor" stroke-width="2" fill="none" />
+                  </svg>
+                  <span>Lock Screen</span>
+                </button>
+                <button id="ignore-btn" class="btn ignore">
+                  <svg class="btn-icon" viewBox="0 0 24 24" aria-hidden="true">
+                    <!--
+                      A crisp X icon drawn with two diagonal strokes.  The
+                      lines start and end slightly inset from the viewBox
+                      edges to prevent the stroke from being clipped.
+                    -->
+                    <line x1="6" y1="6" x2="18" y2="18" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+                    <line x1="18" y1="6" x2="6" y2="18" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+                  </svg>
+                  <span>Do Nothing</span>
+                </button>
+              </div>
+            </div>
+            <!-- The locked and error overlays are no longer nested inside
+                 the card.  They will be appended below so they can
+                 display independently of the card's opacity. -->
+            </div> <!-- end .card -->
+            <!-- Insert overlays inside the monitor so that they are clipped
+                 by the monitor's rounded corners and never extend into
+                 the gap between the screen and its stand. -->
+            <div class="locked-overlay" aria-hidden="true">
+              <div class="locked-content">
+                <!--
+                  Lock micro‑interaction.  A hidden checkbox drives
+                  the animation on the label’s SVG.  When the
+                  checkbox is checked the padlock shackle lowers and
+                  sparkles animate, mirroring the CodePen reference.
+                  The input is toggled via JavaScript when the
+                  correct answer is chosen.
+                -->
+                <input id="lock-toggle" type="checkbox" hidden />
+                <label class="btn-lock" for="lock-toggle">
+                  <svg width="36" height="40" viewBox="0 0 36 40" aria-hidden="true">
+                    <path class="lockb" d="M27 27C27 34.1797 21.1797 40 14 40C6.8203 40 1 34.1797 1 27C1 19.8203 6.8203 14 14 14C21.1797 14 27 19.8203 27 27ZM15.6298 26.5191C16.4544 25.9845 17 25.056 17 24C17 22.3431 15.6569 21 14 21C12.3431 21 11 22.3431 11 24C11 25.056 11.5456 25.9845 12.3702 26.5191L11 32H17L15.6298 26.5191Z" />
+                    <path class="lock" d="M6 21V10C6 5.58172 9.58172 2 14 2V2C18.4183 2 22 5.58172 22 10V21" />
+                    <path class="bling" d="M29 20L31 22" />
+                    <path class="bling" d="M31.5 15H34.5" />
+                    <path class="bling" d="M29 10L31 8" />
+                  </svg>
+                </label>
+                <p class="locked-text">Screen Locked</p>
+                <!-- Success checkmark appears on correct choice to
+                     reinforce positive feedback. -->
+                <svg class="success-check" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M5 13l4 4L19 7" stroke="currentColor" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round" />
+                </svg>
+                <p class="locked-subtext">Great job! Always lock your screen when stepping away.</p>
+              </div>
+            </div>
+            <!-- Error overlay shows a red-tinted backdrop and a small
+                 error popup styled in the spirit of the attached alert
+                 examples.  The popup appears centred on the monitor
+                 with its own border and glow, clearly conveying the
+                 mistake.  A retry button has been added so users can
+                 dismiss the message at their own pace. -->
+            <div class="error-overlay-new" aria-hidden="true">
+              <div class="error-popup">
+                <svg class="error-icon" viewBox="0 0 24 24" aria-hidden="true">
+                  <!-- Triangle with exclamation mark -->
+                  <path d="M12 2L2 22h20L12 2z" fill="currentColor" opacity="0.15" />
+                  <path d="M12 8v6" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+                  <circle cx="12" cy="17" r="1.5" fill="currentColor" />
+                </svg>
+                <p class="error-popup-title">Hold on!</p>
+                <p class="error-popup-text">You forgot to lock your screen. Always secure your computer before stepping away.</p>
+                <button class="retry-btn" type="button">Retry</button>
+              </div>
+            </div>
+          </div> <!-- end .monitor -->
+        </div> <!-- end .monitor-shake-container -->
+        <!-- Base and foot remain outside the shake container so they stay
+             anchored while the screen wobbles on error. -->
+        <div class="monitor-base"></div>
+        <div class="monitor-foot"></div>
+      </div>
+    </div>
+
+    <!-- Scene 2 – interactive flip‑quiz -->
+    <div id="scene2" class="scene">
+      <!-- The quiz container holds the card, next button and scoreboard.  It
+           is centred within the 600×600 frame via flexbox in CSS. -->
+      <div class="quiz-container">
+        <!-- Notification popup for the first quiz card.  This element is
+             initially hidden and will be animated into view via
+             JavaScript when the scene starts.  It reuses the
+             `.notifications` class from the provided notification
+             example and displays a short instruction prompting the
+             learner to click the card. -->
+        <div class="notifications" id="scene2-notification">
+          <span>Read and Click the Card</span>
+        </div>
+
+        <!-- The quiz card.  Clicking on the front of this card flips it
+             to reveal the multiple‑choice options on the back.  Classes
+             applied via JavaScript control the flip state and feedback
+             tinting. -->
+        <div class="quiz-card" id="quiz-card">
+          <div class="quiz-card-inner">
+            <div class="quiz-card-front">
+              <!-- Scenario text injected via script.js -->
+              <p class="scenario-text"></p>
+            </div>
+            <div class="quiz-card-back">
+              <!-- Choices will be inserted here dynamically -->
+              <div class="choice-container"></div>
+            </div>
+          </div>
+        </div>
+        <!-- The next button appears after a choice has been made.  Its
+             label is updated via JS to reflect "Next" or "Finish". -->
+        <div class="quiz-next">
+          <button type="button">Next</button>
+        </div>
+        <!-- Scoreboard overlay.  Hidden until all questions are
+             answered.  Displays only the score; the restart button
+             has been removed per user request.  The confetti
+             container lives inside this overlay and is populated by
+             JS on a perfect score. -->
+        <div class="scoreboard-overlay" id="scoreboard">
+          <div class="score-box">
+            <p class="score-text">Score</p>
+            <div class="confetti-container"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Scene 3 – placeholder for future content -->
+    <div id="scene3" class="scene placeholder">
+      <div class="placeholder-content">
+        <p class="placeholder-title">Slide 3</p>
+        <p class="placeholder-subtitle">Content coming soon…</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Include the animation library locally so the project works offline -->
+  <script src="libs/gsap.min.js"></script>
+  <!-- Typed.js library for animated typing effect -->
+  <script src="libs/typed.umd.min.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>

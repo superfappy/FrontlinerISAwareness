@@ -1,0 +1,1372 @@
+/*
+ * Global styles for the interactive slide deck.  The colour palette is
+ * defined at the top to allow for quick adjustments.  All scenes are
+ * sized to a 600×600 pixel frame and centred within the page.  The
+ * first scene contains the interactive “lock the screen” challenge and
+ * uses a faux monitor to ground the content.
+ */
+
+:root {
+  /* Primary brand colour (teal). */
+  --color-primary: #007881;
+  /* Secondary accent colour (lavender). */
+  --color-secondary: #C49EEA;
+  /* Tertiary accent colour (pastel green). */
+  --color-accent: #92E080;
+  /* Neutral light colour for backgrounds. */
+  --color-light: #F8FAFC;
+  /* Neutral dark colour used for text on light backgrounds. */
+  --color-dark: #1A2B2C;
+
+  /* Additional semantic colours for success and error messaging. */
+  --color-success: #5BC0EB;
+  --color-error: #E4572E;
+  /* Slightly darker overlay for screen lock. */
+  --color-overlay: rgba(0, 0, 0, 0.85);
+
+  /* Quiz feedback colours.  These shades are used for the
+     flip‑quiz in scene 2.  The correct answer turns the card a
+     light green while the wrong answer flashes a warm red.  Keeping
+     these values here makes it easy to tweak the palette without
+     hunting through the CSS. */
+  --color-quiz-correct: #8FF77A;
+  --color-quiz-wrong: #FF7676;
+  /* Neutral colour for quiz buttons before a choice has been made. */
+  --color-quiz-neutral: #F4F7F9;
+}
+
+/* Reset some default margins */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  background: var(--color-primary);
+  color: var(--color-dark);
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+#slide-container {
+  width: 600px;
+  height: 600px;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Generic scene container.  Hidden by default; the active one is
+ * revealed via inline JS by toggling the display property. */
+.scene {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: none;
+  overflow: hidden;
+}
+
+/*
+  Legacy monitor styles from the initial prototype.
+  These classes are no longer referenced in the rebuild but are
+  retained here for completeness.  They are commented out to
+  prevent unwanted interference with the new monitor.
+
+  .monitor {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    align-items: center;
+    padding-top: 20px;
+    position: relative;
+  }
+
+  .monitor-bar {
+    width: 90%;
+    height: 40px;
+    background: var(--color-secondary);
+    border-radius: 6px 6px 0 0;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    padding-right: 10px;
+  }
+
+  .unlock-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: var(--color-accent);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+  }
+  .unlock-icon svg {
+    fill: #ffffff;
+    width: 70%;
+    height: 70%;
+  }
+
+  .monitor-screen {
+    width: 90%;
+    height: 70%;
+    background: var(--color-light);
+    border-radius: 0 0 6px 6px;
+    box-shadow: inset 0 0 0 2px var(--color-primary);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .monitor-base {
+    width: 30%;
+    height: 20px;
+    margin-top: 20px;
+    background: var(--color-secondary);
+    border-radius: 3px;
+    box-shadow: 0 3px 6px rgba(0, 0, 0, 0.2);
+  }
+*/
+
+/* Prompt text and buttons inside the monitor screen */
+.prompt {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  width: 80%;
+  color: var(--color-dark);
+  z-index: 2;
+}
+.prompt .message {
+  font-size: 1.2rem;
+  margin-bottom: 20px;
+  color: var(--color-primary);
+}
+.prompt .buttons {
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+}
+.prompt .btn {
+  border: none;
+  padding: 12px 20px;
+  font-size: 0.95rem;
+  border-radius: 4px;
+  cursor: pointer;
+  color: #ffffff;
+  transition: transform 0.1s ease, box-shadow 0.2s ease;
+  user-select: none;
+}
+.prompt .btn.lock {
+  background: var(--color-secondary);
+}
+.prompt .btn.ignore {
+  background: var(--color-accent);
+}
+.prompt .btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+.prompt .btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+/* Correct answer overlay: covers the screen area when the lock
+ * screen action is selected.  Initially fully transparent and non
+ * interactive.  Set pointer-events via JS when shown. */
+.overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.9);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  pointer-events: none;
+  z-index: 3;
+}
+.overlay-content {
+  text-align: center;
+}
+.overlay .padlock {
+  fill: none;
+  stroke: var(--color-accent);
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.overlay .lock {
+  stroke: var(--color-accent);
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.overlay .lockb {
+  fill: var(--color-accent);
+}
+.overlay .bling {
+  stroke: var(--color-accent);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-dasharray: 3;
+  stroke-dashoffset: 15;
+}
+.overlay-text {
+  margin-top: 20px;
+  font-size: 1.4rem;
+  color: #ffffff;
+  letter-spacing: 0.5px;
+}
+
+/* Error overlay for the incorrect choice.  It flashes a warm
+ * translucent red and displays a warning message. */
+.error-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(255, 61, 87, 0.85);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  pointer-events: none;
+  z-index: 3;
+}
+.error-text {
+  color: #ffffff;
+  font-size: 1.4rem;
+  text-align: center;
+  padding: 0 20px;
+}
+
+/* Placeholder scenes share a simple layout. */
+.placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(145deg, var(--color-secondary) 0%, var(--color-accent) 100%);
+}
+.placeholder-content {
+  text-align: center;
+  color: #ffffff;
+}
+.placeholder-title {
+  font-size: 2rem;
+  font-weight: 600;
+  margin-bottom: 10px;
+}
+.placeholder-subtitle {
+  font-size: 1rem;
+  opacity: 0.8;
+}
+
+/*
+ * =============================
+ * Scene 2 – Flip‑quiz
+ *
+ * The second scene presents a series of interactive quiz cards.
+ * Each card shows a scenario on the front; when clicked it flips
+ * over to reveal multiple choices on the back.  Choices are styled
+ * as buttons and provide immediate feedback when selected.  When
+ * all questions have been answered, a scoreboard overlay appears
+ * summarising the user’s performance.  A simple confetti effect
+ * plays on a perfect score.
+ */
+
+/* Style the entire scene with a subtle background image.  The
+ * generated illustration lives in the project directory and
+ * references the branding colours (teal, lavender, pastel green).
+ * The background scales to cover the full 600×600 frame and
+ * remains centred on resize. */
+#scene2 {
+  background-image: url('quiz-background.png');
+  background-size: cover;
+  background-position: center;
+  display: none;
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+/* Container housing the quiz card and scoreboard.  It uses a
+ * flexbox column to centre content both vertically and
+ * horizontally. */
+#scene2 .quiz-container {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+/* The quiz card uses a 3D transform to flip between the front
+ * (scenario) and back (choices).  Perspective gives depth to
+ * the rotation. */
+.quiz-card {
+  position: relative;
+  width: 80%;
+  max-width: 460px;
+  height: 65%;
+  max-height: 380px;
+  perspective: 1000px;
+  cursor: pointer;
+}
+
+.quiz-card-inner {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transition: transform 0.8s ease;
+  transform-style: preserve-3d;
+}
+
+/* Flip the card when the container has the `.flipped` class. */
+.quiz-card.flipped .quiz-card-inner {
+  transform: rotateY(180deg);
+}
+
+.quiz-card-front,
+.quiz-card-back {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  border-radius: 16px;
+  backface-visibility: hidden;
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.25);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: 30px 24px;
+}
+
+/* Front face: light background with dark text. */
+.quiz-card-front {
+  background: rgba(255, 255, 255, 0.8);
+  color: var(--color-dark);
+}
+
+.quiz-card-front .scenario-text {
+  font-size: 1.2rem;
+  line-height: 1.4;
+  font-weight: 500;
+  text-align: center;
+}
+
+/* Back face: choices appear with a frosted glass feel.  We
+ * rotate the back face by 180° so it appears right side up when
+ * flipped. */
+.quiz-card-back {
+  background: rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  color: var(--color-light);
+  transform: rotateY(180deg);
+  justify-content: flex-start;
+}
+
+/* Container for the choice buttons and explanation.  We stack
+ * choices with consistent spacing and centre them horizontally. */
+.choice-container {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+/* Choice buttons share neutral styling until selected. */
+.choice {
+  padding: 12px 16px;
+  border: none;
+  border-radius: 8px;
+  background: var(--color-quiz-neutral);
+  color: var(--color-dark);
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background 0.25s ease, transform 0.15s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.choice:hover:not([disabled]) {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.choice:disabled {
+  cursor: default;
+}
+
+/* After selection, apply correct/wrong colours to the button. */
+.choice.correct {
+  background: var(--color-quiz-correct);
+  color: var(--color-dark);
+}
+.choice.wrong {
+  background: var(--color-quiz-wrong);
+  color: #ffffff;
+}
+
+/* Explanation text shown after selecting a choice. */
+.explanation {
+  margin-top: 18px;
+  font-size: 0.95rem;
+  line-height: 1.4;
+  text-align: center;
+  color: var(--color-light);
+  padding: 0 8px;
+}
+
+/* When a card is answered incorrectly, tint the entire card. */
+.quiz-card.wrong .quiz-card-front,
+.quiz-card.wrong .quiz-card-back {
+  background: rgba(255, 118, 118, 0.25);
+}
+
+/* When a card is answered correctly, tint the entire card. */
+.quiz-card.correct .quiz-card-front,
+.quiz-card.correct .quiz-card-back {
+  background: rgba(143, 247, 122, 0.25);
+}
+
+/* Next button appears after answering each card.  Positioned
+ * below the card and centred. */
+.quiz-next {
+  margin-top: 20px;
+  display: none;
+}
+.quiz-next button {
+  padding: 10px 20px;
+  font-size: 1rem;
+  border-radius: 8px;
+  border: none;
+  background: var(--color-secondary);
+  color: #ffffff;
+  cursor: pointer;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  transition: transform 0.15s ease;
+}
+.quiz-next button:hover {
+  transform: translateY(-2px);
+}
+
+/* Scoreboard overlay covers the entire scene when displayed. */
+.scoreboard-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.8);
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 30px;
+  z-index: 10;
+}
+
+.scoreboard-overlay .score-box {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border-radius: 20px;
+  padding: 30px 40px;
+  text-align: center;
+  color: var(--color-light);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.25);
+}
+
+.scoreboard-overlay .score-text {
+  font-size: 1.6rem;
+  font-weight: 600;
+  margin-bottom: 20px;
+}
+
+.scoreboard-overlay .restart-btn {
+  padding: 12px 24px;
+  font-size: 1rem;
+  border: none;
+  border-radius: 8px;
+  background: var(--color-accent);
+  color: var(--color-dark);
+  cursor: pointer;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  transition: transform 0.15s ease;
+}
+.scoreboard-overlay .restart-btn:hover {
+  transform: translateY(-2px);
+}
+
+/* Confetti pieces appear on perfect score. */
+.confetti-container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  overflow: hidden;
+  z-index: -1;
+}
+
+.confetti-piece {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  opacity: 0.9;
+  animation: confettiFall linear forwards;
+}
+
+/*
+ * Notification popup for scene 2
+ *
+ * A small teal bubble appears above the first quiz card to prompt
+ * the user to interact with the card.  This reuses the look and
+ * animation of the external `.notifications` class provided in the
+ * attached example.  The popup is absolutely positioned within
+ * the quiz container and centred horizontally over the card.  An
+ * arrow on the bottom points at the card.  The element is hidden
+ * by default and shown via JavaScript when needed.
+ */
+
+#scene2 .notifications {
+  position: absolute;
+  /* Initially place the popup at the top of the quiz container.  Its
+     exact position will be updated in JavaScript based on the card
+     geometry. */
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #0097A7;
+  color: white;
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 1rem;
+  display: none;
+  white-space: nowrap;
+  align-items: center;
+  justify-content: center;
+  z-index: 20;
+  transform-origin: center 60px;
+}
+
+/* Arrow pointing downwards from the notification bubble */
+#scene2 .notifications:after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border-style: solid;
+  border-width: 8px 8px 0 8px;
+  border-color: #0097A7 transparent transparent transparent;
+  pointer-events: none;
+}
+
+/* Keyframes reused from the provided notification example.  They
+   animate the bubble scaling and rotating into view.  The same
+   animation runs in reverse to hide the element. */
+@keyframes note {
+  0% {
+    opacity: 0;
+    transform: scale(0.1) rotate(30deg) translateY(50px) rotateX(90deg);
+  }
+  50% {
+    transform: rotate(-10deg) rotateX(-2deg);
+    opacity: 1;
+  }
+  70% {
+    transform: rotate(3deg);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+/* Show and hide classes for the notification.  When shown the
+   element becomes visible and the entrance animation plays.  When
+   hidden the animation plays in reverse to smoothly fade it out. */
+#scene2 .notifications.show {
+  display: flex;
+  animation: note 0.8s ease-in-out forwards;
+}
+
+#scene2 .notifications.hide {
+  display: flex;
+  animation: note 0.8s ease-in-out reverse forwards;
+}
+
+@keyframes confettiFall {
+  0% {
+    transform: translateY(-10px) rotate(0deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(650px) rotate(720deg);
+    opacity: 0;
+  }
+}
+
+/* Shake animation used to emphasise the wrong choice */
+@keyframes shake {
+ 0%, 100% { transform: translateX(0); }
+ 20%, 60% { transform: translateX(-4px); }
+ 40%, 80% { transform: translateX(4px); }
+}
+
+/* Utility class added via JS when shaking the monitor */
+.shake {
+  animation: shake 0.4s ease-in-out;
+}
+
+/*
+ * =============================
+ * New Scene 1 visuals
+ *
+ * This section defines a fresh look for the first scene.  A frosted
+ * glass card floats above a dark gradient with softly moving
+ * bubbles.  Text appears as though typed on the screen and
+ * overlays feature bespoke animations for success and error states.
+ */
+
+/* Container for the animated bubbles in the background */
+.bg-bubbles {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  z-index: 0;
+}
+
+/* Individual bubble styling; sizes and positions are varied via
+ * nth-child selectors below.  Each bubble slowly floats upwards
+ * while gently changing opacity and scale to add depth. */
+.bubble {
+  position: absolute;
+  border-radius: 50%;
+  background: radial-gradient(circle at center, rgba(255, 255, 255, 0.35) 0%, rgba(255, 255, 255, 0.02) 100%);
+  animation: floatUp linear infinite;
+  pointer-events: none;
+}
+
+/* Different sizes, positions and durations for each bubble */
+.bubble-1 { width: 120px; height: 120px; left: 10%; bottom: -20%; animation-duration: 18s; }
+.bubble-2 { width: 80px; height: 80px; left: 70%; bottom: -25%; animation-duration: 22s; animation-delay: 2s; }
+.bubble-3 { width: 150px; height: 150px; left: 40%; bottom: -30%; animation-duration: 26s; animation-delay: 4s; }
+.bubble-4 { width: 60px; height: 60px; left: 25%; bottom: -15%; animation-duration: 20s; animation-delay: 6s; }
+.bubble-5 { width: 90px; height: 90px; left: 85%; bottom: -20%; animation-duration: 24s; animation-delay: 8s; }
+.bubble-6 { width: 100px; height: 100px; left: 55%; bottom: -35%; animation-duration: 28s; animation-delay: 10s; }
+
+@keyframes floatUp {
+  0%   { transform: translateY(0) scale(0.8); opacity: 0; }
+  10%  { opacity: 0.4; }
+  50%  { opacity: 0.6; }
+  90%  { opacity: 0.4; }
+  100% { transform: translateY(-130%); opacity: 0; }
+}
+
+/* Frosted glass card */
+.card {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  /* Adjust card width to comfortably fit within the monitor
+   * screen while leaving generous margins on each side. */
+  width: 75%;
+  max-width: 500px;
+  padding: 40px 30px 50px;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.18);
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.25);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  color: var(--color-light);
+  text-align: center;
+  z-index: 2;
+}
+
+.card-header {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.kitopi-icon {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.card-body {
+  margin-top: 40px;
+}
+
+/* Typed text container */
+#typed-text {
+  display: inline-block;
+  font-size: 1.3rem;
+  line-height: 1.5;
+  font-weight: 500;
+  color: var(--color-light);
+  min-height: 3rem;
+}
+
+/* Buttons container for the card */
+.card-buttons {
+  margin-top: 40px;
+  /*
+   * Use a simple flex row for the action buttons.  To ensure both
+   * choices occupy exactly half of the available width, we remove
+   * the use of `justify-content: space-between` (which distributes
+   * free space as margins) and instead rely on a fixed gap.  Each
+   * button uses a calculated flex‑basis so that the two combined
+   * widths plus the gap equal 100% of the parent container.  This
+   * approach guarantees the buttons are perfectly aligned and equal
+   * in size regardless of label length.
+   */
+  /*
+   * Lay out the two action buttons using a grid.  A two‑column grid
+   * ensures that the buttons always occupy exactly half of the
+   * available width regardless of their content.  The 20px gap
+   * remains between them for spacing.
+   */
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 20px;
+
+}
+
+.card-buttons .btn {
+  position: relative;
+  padding: 14px 24px;
+  border: none;
+  border-radius: 30px;
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  overflow: hidden;
+  color: #fff;
+  transition: transform 0.2s ease, box-shadow 0.3s ease;
+  backdrop-filter: blur(4px);
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  /*
+   * When using the grid layout above, the buttons inherit their
+   * width automatically.  Reset any flex properties to avoid
+   * unintended behaviour and force the buttons to fill their grid
+   * cells completely.
+   */
+  flex: none;
+  width: 100%;
+
+  /* Allow the button contents to shrink without overflowing.
+     Setting min-width to zero ensures that long labels will wrap or
+     shrink appropriately and prevents the buttons from pushing
+     against each other and becoming misaligned when the text
+     content changes during animations. */
+  min-width: 0;
+
+  /*
+   * Hide each button initially so that it only appears once the
+   * typing animation completes.  GSAP will animate the buttons
+   * into view from these starting values.
+   */
+  opacity: 0;
+  transform: translateY(30px);
+}
+.card-buttons .btn.lock {
+  /* Vibrant gradient emphasising the recommended action. */
+  background: linear-gradient(145deg, var(--color-primary), var(--color-accent));
+}
+.card-buttons .btn.ignore {
+  /* Warm gradient signifying an incorrect choice. */
+  background: linear-gradient(145deg, var(--color-error), #F69C8D);
+}
+.card-buttons .btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+.card-buttons .btn:hover:not(:disabled) {
+  transform: translateY(-3px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+}
+
+/*
+ * Icon inside card buttons.  The SVGs are scaled down to
+ * approximately 1.1rem high and inherit the current text colour.
+ */
+.btn-icon {
+  width: 1.1rem;
+  height: 1.1rem;
+  fill: currentColor;
+  flex-shrink: 0;
+}
+
+/* Fine‑tune icon sizes for individual buttons to achieve better
+   optical alignment.  The lock icon is slightly narrower than
+   the x‑mark, so we scale it up a bit. */
+/* Equalize button icon sizes for both choices */
+.card-buttons .btn.lock .btn-icon,
+  .card-buttons .btn.ignore .btn-icon {
+  /* Reduce the icon size slightly to ensure that strokes are not
+     clipped by the SVG viewport.  A smaller footprint leaves
+     sufficient space around the edges of the icon. */
+  width: 1.1rem;
+  height: 1.1rem;
+}
+
+/* Locked overlay styling */
+/*
+ * Locked overlay sits inside the monitor screen.  It inherits
+ * the monitor's rounded corners and only darkens the screen area.
+ */
+.locked-overlay {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: var(--color-overlay);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  opacity: 0;
+  pointer-events: none;
+  z-index: 5;
+}
+/*
+ * Adjust the locked overlay layout.  Use flexbox to centre the
+ * micro‑interaction and accompanying text.  Reduce the default
+ * padding to ensure the content sits comfortably within the
+ * monitor without crowding the top edge.  Elements are stacked
+ * vertically and centred horizontally.
+ */
+.locked-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 24px;
+}
+/*
+ * Padlock styling inside the locked overlay.  The icon preserves
+ * the proportions of the original CodePen demo to ensure none of
+ * its details are clipped.  A slightly larger width and heavier
+ * stroke weight improve legibility.  Individual parts of the lock
+ * are styled separately to allow fine‑tuning of fill and stroke
+ * properties.
+ */
+.locked-padlock {
+  width: 80px;
+  height: auto;
+  /* Override the default fill on the root SVG.  All individual
+     paths define their own fill or stroke below. */
+  fill: none;
+  /* Provide a default stroke colour so unstyled paths inherit
+     the accent colour. */
+  stroke: var(--color-accent);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+/* Body of the padlock.  Apply an accent fill and tilt the shape
+   slightly as in the original reference to reveal the bottom and
+   side highlights.  The even‑odd rule preserves the hollow area
+   within the lock. */
+.locked-padlock .lockb {
+  fill: var(--color-accent);
+  fill-rule: evenodd;
+  clip-rule: evenodd;
+  transform: rotate(8deg);
+  transform-origin: 14px 20px;
+}
+/* Shackle of the padlock.  Use a robust stroke width and rounded
+   caps and joins to retain the delicate curvature.  A dashed
+   stroke animates in the original micro‑interaction, but here we
+   leave it solid for clarity. */
+.locked-padlock .lock {
+  stroke: var(--color-accent);
+  stroke-width: 4;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+/* Sparkle lines around the padlock.  These are dashed to
+   reference the playful micro‑interaction while remaining subtle. */
+.locked-padlock .bling {
+  stroke: var(--color-accent);
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-dasharray: 3;
+  stroke-dashoffset: 15;
+}
+.locked-text {
+  /* Position the heading closer to the micro lock for better
+     vertical alignment.  Decrease the font size slightly to
+     avoid overpowering the micro‑interaction. */
+  margin-top: 24px;
+  font-size: 1.4rem;
+  color: var(--color-accent);
+  letter-spacing: 1px;
+}
+
+/* Additional elements for positive feedback on the locked overlay */
+.success-check {
+  /* Reduce the size of the checkmark and bring it closer to the
+     heading for a cleaner look. */
+  margin-top: 16px;
+  /* Increase the size of the checkmark slightly to better
+     complement the larger padlock button. */
+  width: 56px;
+  height: 56px;
+  color: var(--color-accent);
+  opacity: 0; /* Hidden until animated in */
+}
+.locked-subtext {
+  /* Slightly reduce spacing below the checkmark.  Use a smaller
+     font size and narrower max width to prevent the subtext from
+     crowding the edges of the monitor. */
+  margin-top: 12px;
+  font-size: 0.9rem;
+  color: var(--color-light);
+  max-width: 80%;
+  margin-left: auto;
+  margin-right: auto;
+  line-height: 1.4;
+  opacity: 0; /* Hidden until animated in */
+  text-align: center;
+}
+
+/*
+ * Exclamation icon inside the error overlay.  Its colour is set
+ * using the light colour so it contrasts against the tinted red
+ * backdrop.  A margin provides breathing room above the message.
+ */
+.error-icon {
+  width: 60px;
+  height: auto;
+  color: var(--color-light);
+  margin-bottom: 20px;
+}
+
+/* Add spacing inside the locked content so the padlock and text
+   don't touch the edges of the monitor. */
+.locked-content {
+  padding: 40px;
+}
+
+/* Error overlay for the new design.  Uses animated diagonal stripes
+ * to suggest urgency. */
+/*
+ * Error overlay sits within the monitor.  A vibrant red tint warns the user
+ * of an incorrect choice.  Subtle diagonal stripes animate across the
+ * overlay to draw attention.
+ */
+/*
+ * Error overlay design.  A translucent red veil warns the user of an
+ * incorrect choice.  Animated diagonal stripes move across the
+ * surface to create urgency.  The overlay uses flexbox to centre
+ * the error popup component defined below.
+ */
+.error-overlay-new {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: rgba(228, 87, 46, 0.75);
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  pointer-events: none;
+  z-index: 5;
+}
+.error-overlay-new::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image: repeating-linear-gradient(45deg,
+      rgba(255, 255, 255, 0.18) 0px,
+      rgba(255, 255, 255, 0.18) 12px,
+      rgba(255, 255, 255, 0) 12px,
+      rgba(255, 255, 255, 0) 24px);
+  background-size: 300% 300%;
+  animation: stripesMove 6s linear infinite;
+  pointer-events: none;
+}
+@keyframes stripesMove {
+  from { background-position: 0 0; }
+  to   { background-position: 400px 400px; }
+}
+
+/*
+ * Micro lock animation inside the locked overlay
+ *
+ * A hidden checkbox (#lock-toggle) controls the state of the
+ * circular button.  When unchecked the button appears in the
+ * error colour (red) and the shackle sits raised.  When checked
+ * the background shifts to the success colour (green), the
+ * shackle lowers and the sparkle strokes animate.
+ */
+.locked-content .btn-lock {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  /* Size and appearance of the lock button.  A moderate size
+     ensures the animation is clearly visible without crowding the
+     overlay. */
+  width: 96px;
+  height: 96px;
+  background: var(--color-error);
+  border-radius: 50%;
+  cursor: pointer;
+  margin: 0 auto;
+  box-sizing: border-box;
+  /* Prevent tap highlight on mobile */
+  -webkit-tap-highlight-color: transparent;
+}
+.locked-content .btn-lock svg {
+  fill: none;
+  transform: translate3d(0, 0, 0);
+}
+.locked-content .btn-lock svg .bling {
+  stroke: var(--color-light);
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-dasharray: 3;
+  stroke-dashoffset: 15;
+  transition: all 0.3s ease;
+}
+.locked-content .btn-lock svg .lock {
+  stroke: var(--color-light);
+  stroke-width: 4;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+  stroke-dasharray: 36;
+  transition: all 0.4s ease;
+}
+.locked-content .btn-lock svg .lockb {
+  fill: var(--color-light);
+  fill-rule: evenodd;
+  clip-rule: evenodd;
+  transform: rotate(8deg);
+  transform-origin: 14px 20px;
+  transition: all 0.2s ease;
+}
+#lock-toggle {
+  display: none;
+}
+#lock-toggle:checked + .btn-lock {
+  background: var(--color-success);
+}
+#lock-toggle:checked + .btn-lock svg .bling {
+  animation: micro-bling 0.3s linear forwards;
+  animation-delay: 0.2s;
+}
+#lock-toggle:checked + .btn-lock svg .lock {
+  stroke-dasharray: 48;
+  animation: micro-locked 0.3s linear forwards;
+}
+#lock-toggle:checked + .btn-lock svg .lockb {
+  transform: rotate(0);
+  transform-origin: 14px 22px;
+}
+@keyframes micro-bling {
+  50% {
+    stroke-dasharray: 3;
+    stroke-dashoffset: 12;
+  }
+  100% {
+    stroke-dasharray: 3;
+    stroke-dashoffset: 9;
+  }
+}
+@keyframes micro-locked {
+  50% {
+    transform: translateY(1px);
+  }
+}
+
+/*
+ * Error popup container.  Inspired by the attached animated alert
+ * samples, the popup features a semi‑transparent panel with a subtle
+ * border, rounded corners and soft inner glow.  It sits above the
+ * diagonal stripes to maintain readability.
+ */
+.error-popup {
+  position: relative;
+  padding: 28px 36px;
+  border-radius: 16px;
+  /* A darker frosted backdrop improves readability against the red
+     overlay.  The box‑shadow adds depth and the border picks
+     up some of the overlay hue to tie it together. */
+  background: rgba(0, 0, 0, 0.45);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.5), inset 0 0 6px rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  max-width: 360px;
+  width: 80%;
+  text-align: center;
+  z-index: 1;
+  color: var(--color-light);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+.error-popup .error-icon {
+  width: 48px;
+  height: 48px;
+  color: var(--color-light);
+  margin: 0 auto 16px;
+}
+.error-popup-title {
+  font-size: 1.4rem;
+  font-weight: 600;
+  margin-bottom: 8px;
+  color: var(--color-light);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+}
+.error-popup-text {
+  font-size: 0.95rem;
+  line-height: 1.5;
+  color: var(--color-light);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+}
+
+/*
+ * Retry button displayed inside the error popup.  Styled to
+ * complement the overall colour palette and provide clear
+ * affordance for returning to the main interaction.  The
+ * transition mirrors that of the primary action buttons for
+ * consistency.
+ */
+.retry-btn {
+  margin-top: 20px;
+  padding: 10px 24px;
+  background: linear-gradient(145deg, var(--color-accent), var(--color-secondary));
+  color: var(--color-dark);
+  font-size: 0.95rem;
+  font-weight: 500;
+  border: none;
+  border-radius: 20px;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.3s ease;
+}
+.retry-btn:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
+}
+
+/*
+ * Monitor shape for the refreshed Scene 1
+ *
+ * The monitor consists of a screen area with rounded corners,
+ * a triangular stand base and a rectangular foot.  The entire
+ * assembly is centred within the 600×600 frame.  The interactive
+ * card is placed inside the monitor screen via absolute
+ * positioning.
+ */
+
+.monitor-wrapper {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 85%;
+  height: 75%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  pointer-events: none;
+  z-index: 1;
+}
+
+/*
+ * Container around the monitor screen and overlays.  Using a
+ * separate element for the shake animation prevents the
+ * translate(-50%, -50%) on the monitor-wrapper from being
+ * overridden, which previously caused the monitor to jump to
+ * another position during the shake.  Only this container will
+ * wobble when the user picks the wrong answer.
+ */
+.monitor-shake-container {
+  width: 100%;
+  /*
+   * The shake container should occupy the full width and height of
+   * the monitor wrapper so that its child monitor retains the same
+   * proportional sizing (75% height of the wrapper).  Without a
+   * defined height, the container collapses and the monitor
+   * collapses with it.  A height of 100% ensures the monitor
+   * remains 75% of the wrapper's height.
+   */
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+}
+
+/* The screen uses a translucent gradient based on the primary
+ * colour palette.  It casts both an outer and inner shadow to
+ * create depth and is set to relative positioning so the card
+ * inside can be absolutely positioned. */
+.monitor {
+  width: 100%;
+  height: 75%;
+  background: linear-gradient(180deg,
+    rgba(255, 255, 255, 0.08) 0%,
+    rgba(255, 255, 255, 0.02) 100%);
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  box-shadow:
+    0 15px 40px rgba(0, 0, 0, 0.35), /* outer shadow for depth */
+    inset 0 0 12px rgba(255, 255, 255, 0.1); /* inner glow */
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  position: relative;
+  overflow: hidden;
+  pointer-events: auto;
+  /* Pseudo-element definitions follow to enhance realism. */
+}
+
+/* Reflection overlay on the monitor screen creating a glossy
+ * highlight.  Positioned absolutely to overlay the screen. */
+.monitor::after {
+  content: "";
+  position: absolute;
+  top: -10%;
+  left: -10%;
+  width: 120%;
+  height: 120%;
+  background: linear-gradient(120deg,
+    rgba(255, 255, 255, 0.25) 0%,
+    rgba(255, 255, 255, 0) 60%);
+  transform: rotate(-10deg);
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* Small camera dot at the top centre of the monitor screen */
+.monitor-camera {
+  position: absolute;
+  top: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.6);
+  box-shadow: 0 0 4px rgba(255, 255, 255, 0.5);
+  z-index: 2;
+}
+
+/* The triangular stand of the monitor, rendered using CSS
+ * borders.  It inherits its colour from the secondary palette. */
+/*
+ * Monitor stand base
+ *
+ * The triangular piece of the monitor stand should sit directly
+ * beneath the monitor with no visible gap.  Its top edge aligns
+ * flush with the bottom of the monitor and its pointed tip nests
+ * neatly into the rectangular foot below.  To achieve this
+ * alignment the triangle is drawn with borders equal to half
+ * the width of the foot (90px on each side) so the top width
+ * matches the foot exactly.  The height of the triangle is
+ * defined via the border‑top.  A negative top margin equal to
+ * the triangle’s height lifts it up so its flat edge touches
+ * the bottom of the monitor.  A relative position and
+ * appropriate z‑index ensure it layers above the foot while
+ * still allowing the monitor screen to remain interactive.
+ */
+.monitor-base {
+  width: 0;
+  height: 0;
+  /* Set the horizontal size of the triangle so it aligns with
+     the monitor foot beneath.  The sum of the left and right
+     borders defines the top width of the triangle (180px). */
+  /* Make the stand’s triangle slightly wider than the foot.  A
+     width of 210px (105px per side) yields a gentle overhang on
+     either side of the 180px foot, closely matching the
+     proportions of the provided reference. */
+  border-left: 105px solid transparent;
+  border-right: 105px solid transparent;
+  /* The height of the triangle: increase slightly to give a more
+     substantial stem and mirror the reference image. */
+  border-top: 45px solid var(--color-secondary);
+  /* Pull the base upward to remove the empty space below the monitor.
+     The monitor occupies 75% of its wrapper’s height, leaving
+     roughly 112px of free space beneath.  Offsetting the base by
+     this amount ensures its flat edge sits flush with the bottom
+     of the monitor. */
+  margin-top: -112px;
+  position: relative;
+  z-index: 2;
+}
+
+/* The rectangular foot that supports the monitor. */
+/*
+ * Monitor stand foot
+ *
+ * The rectangular foot supports the triangular base.  Its width
+ * matches the triangle’s top edge so the two elements line up
+ * perfectly.  A modest height and generous border radius mirror
+ * the soft design of the rest of the UI.  The negative margin
+ * lifts the foot up by its own height so the apex of the triangle
+ * slots neatly into the centre of the foot without any visible
+ * gap.  Position it behind the triangle using a lower z‑index.
+ */
+.monitor-foot {
+  width: 180px;
+  height: 20px;
+  background: linear-gradient(to bottom, var(--color-secondary) 0%, #a880d7 100%);
+  border-radius: 8px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4);
+  /* The foot remains directly below the triangular base.  Without a
+     negative margin the top of the foot aligns with the apex of
+     the triangle automatically.  This avoids introducing an
+     unwanted gap. */
+  margin-top: 0;
+  position: relative;
+  z-index: 1;
+}
